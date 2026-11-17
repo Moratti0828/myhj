@@ -12,7 +12,10 @@ export function getLatestUserText(messages = []) {
 }
 
 export function isDrawRequest(text) {
-    return DRAW_INTENT_RE.test(String(text || ""));
+    const value = String(text || "");
+    // Explicit refusal takes precedence over a keyword embedded in that refusal.
+    if (/(?:不要|不用|无需|不需要|不必|别|先不|暂不)\s*(?:帮我|为我|给我)?\s*(?:生成|绘制|画|作画|生图)/.test(value)) return false;
+    return DRAW_INTENT_RE.test(value);
 }
 
 const DRAW_TERM_RULES = [

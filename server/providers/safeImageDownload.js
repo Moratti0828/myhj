@@ -15,7 +15,21 @@ export function isPublicAddress(address) {
     return net.isIP(address) === 6 && /^[23]/i.test(address) && !/^200[12]:/i.test(address);
 }
 
-export async function validateImageUrl(value, lookup = dns.lookup) {
+// Optional compatibility for local proxy Fake-IP DNS. Resolution still goes
+// through public-address validation and the HTTPS connection pins that result.
+export async function lookupImageHost(hostname, options) {
+    if (process.env.IMAGE_DNS_OVER_HTTPS !== 'true') return dns.lookup(hostname, options);
+    const response = await fetch(`https://dns.alidns.com/resolve?name=${encodeURIComponent(hostname)}&type=A`, {
+        signal: AbortSignal.timeout(5000), redirect: 'error'
+    });
+    if (!response.ok) throw new Error('图片域名解析服务不可用');
+    const result = await response.json();
+    if (result.Status !== 0) throw new Error('图片域名解析失败');
+    return (result.Answer || []).filter(item => item.type === 1 && net.isIP(item.data) === 4)
+        .map(item => ({ address: item.data, family: 4 }));
+}
+
+export async function validateImageUrl(value, lookup = lookupImageHost) {
     const url = new URL(value);
     if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) throw new Error('图片地址必须是公网 HTTPS 地址');
     const hostname = url.hostname.replace(/^\[|\]$/g, '');
@@ -42,7 +56,7 @@ export async function imageUrlToDataUrl(value) {
                 if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
                     res.resume(); resolve({ redirect: new URL(res.headers.location, url).href }); return;
                 }
-                if (res.statusCode !== 200 || !/^image\/(png|jpeg|webp|gif)(;|$)/i.test(res.headers['content-type'] || '')) {
+                if (res.statusCode !== 200 || !/^(?:image\/(?:png|jpeg|webp|gif)|application\/octet-stream)(;|$)/i.test(res.headers['content-type'] || '')) {
                     res.resume(); reject(new Error('下载结果不是支持的图片')); return;
                 }
                 const chunks = []; let size = 0;

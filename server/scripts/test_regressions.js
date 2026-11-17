@@ -1,3 +1,4 @@
+import { isDrawRequest } from '../agent_knowledge.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -120,4 +121,22 @@ test('cross-origin writes are rejected while same-origin requests work', () => {
     originGuard({ get: key => key === 'origin' ? 'https://evil.example' : 'app.example' }, response(), () => { passed = true; });
     assert.equal(passed, false);
     originGuard({ get: key => key === 'origin' ? 'https://app.example' : 'app.example' }, response(), () => { passed = true; }); assert.equal(passed, true);
+});
+
+
+test('explicit no-image requests do not trigger paid drawing', () => {
+    for (const text of ['不需要生成图片，只给建议', '不要帮我画一幅画', '先不生成一张图片', '无需绘制，只讨论构图']) assert.equal(isDrawRequest(text), false);
+    for (const text of ['帮我画一幅月下小舟', '请画一张山水画']) assert.equal(isDrawRequest(text), true);
+});
+
+
+test('optional DoH resolution still rejects private addresses', async t => {
+    const oldFlag = process.env.IMAGE_DNS_OVER_HTTPS;
+    const oldFetch = globalThis.fetch;
+    t.after(() => { globalThis.fetch = oldFetch; if (oldFlag === undefined) delete process.env.IMAGE_DNS_OVER_HTTPS; else process.env.IMAGE_DNS_OVER_HTTPS = oldFlag; });
+    process.env.IMAGE_DNS_OVER_HTTPS = 'true';
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ Status: 0, Answer: [{ type: 1, data: '127.0.0.1' }] }) });
+    await assert.rejects(validateImageUrl('https://example.com/image.png'), /内网或保留/);
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ Status: 0, Answer: [{ type: 1, data: '8.8.8.8' }] }) });
+    assert.equal((await validateImageUrl('https://example.com/image.png')).addresses[0].address, '8.8.8.8');
 });

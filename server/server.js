@@ -1124,7 +1124,7 @@ app.post("/api/agent/chat", async (req, res) => {
         const parsedReply = cleanAgentReply(result.reply || "", { drawRequested });
         let cleanText = parsedReply.text || (drawRequested ? "小生已整理好画意。" : buildFallbackHeritageAnswer(latestUserText));
 
-        if ((drawRequested || !localAnswer) && !paidGuard(req, res)) return;
+        // The paid request was reserved before the provider call; do not charge or reject it twice.
         if (drawRequested) {
             promptUsed = parsedReply.drawPrompt || promptUsed || buildDrawPromptFromUser(latestUserText);
             cleanText = [

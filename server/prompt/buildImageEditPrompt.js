@@ -51,14 +51,14 @@ export function buildImageEditPrompt({
         task,
         "输入图是唯一的视觉依据：只沿着输入图中的线条生长画面，不要新增输入图中不存在的场景、人物或建筑。",
         contentLine ? `题材约束：${contentLine}` : "",
-        "原图是视觉依据。原图中的手写文字必须保留文字内容、字形结构、行列布局、笔画走向与书写特点，不转写为印刷字，不增删字符。",
-        "参考图中的人物、物件和纹样应能与原图对应；不要用无关场景替换原作。",
+        "先判断原图是否存在文字或印章：原图没有的文字、题字、印章、签名一律不得新增。仅当原图确有手写文字时，保留其内容、字形、行列和笔画，不转写、不增删。",
+        "逐一保留原图中已有主体与物件，数量和位置不变，不删除、复制或替换；不要把倒影画成新增物件，不用无关场景替换原作。",
         `风格：${styles[style] || styles.ink}。风格只改变表现方式，不覆盖原作的识别特征。`,
         prompt.trim() ? `具体修改要求：${prompt.trim()}` : "仅润饰原作的线条、质感与色彩，不添加无关主体。"
     ].filter(Boolean).join("\n");
     const negativeBase = negative.trim() || "低清晰度，模糊，主体变形，笔画缺失，错误字形，额外标志";
     const contentNegative = contentNegatives[content] || "";
-    const negativePrompt = [negativeBase, contentNegative].filter(Boolean).join("，");
+    const negativePrompt = [negativeBase, contentNegative, "新增题字，新增印章，新增签名，主体消失，重复主体"].filter(Boolean).join("，");
     return { positivePrompt, negativePrompt };
 }
 
