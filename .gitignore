@@ -1,0 +1,46 @@
+# Dependency directories
+node_modules/
+server/node_modules/
+
+# Local databases & user data
+server/data/users/*.json
+!server/data/users/.gitkeep
+server/data/wan-video-tasks.json
+server/data/sessions/
+server/data/.session-secret
+server/data/ai-usage.json
+public/uploads/*
+!public/uploads/.gitkeep
+public/user_images/*
+!public/user_images/.gitkeep
+artifacts/
+outputs/
+
+# Sensitive config files
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example
+
+# Log files
+*.log
+logs/
+
+# OS temporary files
+.DS_Store
+Thumbs.db
+
+# Build, document scratch, local artifacts
+frontend/dist/
+.doc-work/
+*.tsbuildinfo
+*.pem
+*.key
+*.sql
+*.zip
+server/data/*
+!server/data/users/
+server/data/users/*
+!server/data/users/.gitkeep

@@ -1,0 +1,33 @@
+{
+  "name": "moyun-huajing-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "test": "npm run test:wan:mock && npm run test:structure && npm run test:orchestrator && npm run test:story && npm run test:regressions",
+    "test:wan:mock": "node scripts/test_dashscope_wan_mock.js",
+    "test:wan:live": "node scripts/test_dashscope_wan_live.js",
+    "test:structure": "node scripts/test_structure.js",
+    "test:orchestrator": "node scripts/test_orchestrator.js",
+    "test:story": "node scripts/test_story_payload.js",
+    "migrate:mysql": "node database/migrate-json-to-mysql.js",
+    "test:regressions": "node --test scripts/test_regressions.js",
+    "test:http": "node scripts/test_http_regressions.js",
+    "test:mysql": "node scripts/test_mysql.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-session": "^1.17.3",
+    "mysql2": "^3.22.4",
+    "node-fetch": "^3.3.2",
+    "sharp": "^0.35.5"
+  },
+  "overrides": {
+    "qs": "^6.17.1"
+  }
+}
