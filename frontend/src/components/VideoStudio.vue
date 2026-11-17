@@ -90,6 +90,7 @@
           </button>
         </div>
 
+        <p class="frame-fit-note">{{ video.qualityPreset === 'balanced' ? '快速预览费用较低，但可能出现原作细节变化。' : '保真优先与长镜叙事使用较高质量模型，含音轨，费用高于快速预览；生成后仍需检查主体和细节。' }}</p>
         <div class="queue-advice" :class="{ active: video.status === 'generating' }">
           <div>
             <span>队列状态</span>
@@ -224,7 +225,7 @@ const frameUrl = ref('')
 
 const qualityPresets = [
   { value: 'balanced' as const, badge: '快', label: '快速预览', meta: '720P · 5 秒' },
-  { value: 'premium' as const, badge: '清', label: '高清成片', meta: '1080P · 5 秒' },
+  { value: 'premium' as const, badge: '清', label: '保真优先', meta: '1080P · 5 秒 · 含音轨' },
   { value: 'cinematic' as const, badge: '长', label: '长镜叙事', meta: '1080P · 8 秒' },
 ]
 
@@ -243,7 +244,7 @@ const selectedScene = computed(() => direction.scenes.find(scene => scene.value 
 const statusText = computed(() => {
   if (video.status === 'generating') return /PENDING|QUEUED/i.test(String(latestProgress.value?.status || '')) ? '正在排队' : '正在铺展动画'
   if (video.status === 'error') return '生成失败，请看右侧原因'
-  if (video.status === 'done') return '成片已完成'
+  if (video.status === 'done') return '视频已生成，请检查画面保真'
   return '等待生成'
 })
 

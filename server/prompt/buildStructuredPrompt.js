@@ -82,12 +82,12 @@ export function buildStructuredPrompt({ contract, style = "ink", userPrompt = ""
     if (String(userPrompt || "").trim()) {
         lines.push(`【用户补充】${String(userPrompt).trim()}`);
     }
-    lines.push("只输出图像，不要出现文字、水印或标志。");
+    lines.push("只输出图像。仅保留原图已有的文字和标识，禁止新增题字、印章或签名。保持主体数量，不把倒影扩展成第二个独立主体。");
 
     return lines.join("\n");
 }
 
 export function buildStructuredNegative(userNegative = "") {
-    const base = "低清晰度，模糊，主体变形，笔画缺失，错误字形，额外标志，水印，文字";
+    const base = "低清晰度，模糊，主体变形，笔画缺失，错误字形，新增标志，新增题字，新增印章，新增签名，主体消失，重复主体";
     return String(userNegative || "").trim() ? `${String(userNegative).trim()}，${base}` : base;
 }

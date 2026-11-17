@@ -1,3 +1,4 @@
+import { applySemanticReview } from '../providers/semanticReview.js';
 /**
  * 构图守门智能体的编排层。
  *
@@ -27,6 +28,7 @@ export async function runStructurePipeline({
     onProgress = null,
     generate,
     repair = null,
+    review = null,
     background = "",
     caption = null
 }) {
@@ -119,7 +121,7 @@ export async function runStructurePipeline({
 
     const requested = Number(options.candidates);
     const candidateCount = Math.max(1, Math.min(MAX_CANDIDATES, Number.isFinite(requested) ? requested : 2));
-    const maxCalls = Math.max(candidateCount, Number(options.maxCalls) || candidateCount + 1);
+    const maxCalls = Math.max(candidateCount, Math.min(4, Number(options.maxCalls) || candidateCount + 1));
     let calls = 0;
 
     const candidates = [];
@@ -140,7 +142,11 @@ export async function runStructurePipeline({
             analysis
         });
         const metrics = await compareStructure(analysis, out.image);
-        const report = evaluateCandidate({ metrics, style, contract });
+        let report = evaluateCandidate({ metrics, style, contract });
+        if (review) {
+            emit("reviewing", { index, total: candidateCount, message: "正在对照原作检查主体、题字与印章…" });
+            report = applySemanticReview(report, await review({ source: sketch, candidate: out.image }));
+        }
         const item = { image: out.image, image_url: out.imageUrl || null, seed, metrics, report, source: "generated" };
         candidates.push(item);
         mark("observe", {
@@ -156,7 +162,7 @@ export async function runStructurePipeline({
     candidates.sort((a, b) => Number(b.report.verdict === "accept") - Number(a.report.verdict === "accept") || b.report.score - a.report.score);
     let chosen = candidates[0];
 
-    const allowRepair = options.repair !== false && typeof repair === "function" && calls < maxCalls;
+    const allowRepair = chosen?.report?.semantic?.verdict !== 'uncertain' && options.repair !== false && typeof repair === "function" && calls < maxCalls;
     if (allowRepair && chosen && chosen.report.verdict === "repair") {
         const instruction = buildRepairInstruction(chosen.report.defects, contract);
         emit("repairing", {
@@ -174,7 +180,8 @@ export async function runStructurePipeline({
                 defects: chosen.report.defects
             });
             const metrics = await compareStructure(analysis, fixed.image);
-            const report = evaluateCandidate({ metrics, style, contract });
+            let report = evaluateCandidate({ metrics, style, contract });
+            if (review) report = applySemanticReview(report, await review({ source: sketch, candidate: fixed.image }));
             mark("repair", {
                 reason_code: "TARGETED_REPAIR",
                 score_before: chosen.report.score,

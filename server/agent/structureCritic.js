@@ -176,6 +176,13 @@ export function buildRepairInstruction(defects, contract) {
             case "PALETTE_BLUE":
                 parts.push("只使用钴蓝与白釉色阶，去掉其它彩色");
                 break;
+            case "MISSING_SUBJECT":
+            case "ADDED_SUBJECT":
+            case "ADDED_TEXT":
+            case "ADDED_SEAL":
+            case "ALTERED_SUBJECT":
+                parts.push(`对照原作修正：${defect.message}`);
+                break;
             default:
                 break;
         }

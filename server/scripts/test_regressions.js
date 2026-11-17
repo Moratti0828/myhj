@@ -140,3 +140,42 @@ test('optional DoH resolution still rejects private addresses', async t => {
     globalThis.fetch = async () => ({ ok: true, json: async () => ({ Status: 0, Answer: [{ type: 1, data: '8.8.8.8' }] }) });
     assert.equal((await validateImageUrl('https://example.com/image.png')).addresses[0].address, '8.8.8.8');
 });
+
+test('semantic evidence overrides a perfect geometric score and malformed replies cannot pass', async () => {
+    const { parseSemanticReview, applySemanticReview } = await import('../providers/semanticReview.js');
+    const base = { score: 1, verdict: 'accept', defects: [], breakdown: {} };
+    const checked = parseSemanticReview(JSON.stringify({ verdict: 'pass', summary: '有变化', issues: [{ code: 'MISSING_SUBJECT', evidence: '原图中央有舟，候选中消失' }] }));
+    assert.equal(checked.verdict, 'reject');
+    assert.equal(applySemanticReview(base, checked).verdict, 'repair');
+    assert.equal(applySemanticReview(base, { verdict: 'uncertain', issues: [], summary: '复核未完成' }).verdict, 'repair');
+    assert.throws(() => parseSemanticReview('{"verdict":"pass"}'));
+    assert.throws(() => parseSemanticReview('{"verdict":"reject","summary":"差","issues":[]}'));
+});
+
+test('structured selection prefers semantically intact candidates and uncertainty never triggers paid repair', async () => {
+    let reviewCalls = 0;
+    const result = await runStructurePipeline({ sketch: image, style: 'ink', options: { candidates: 2, repair: false, seed: 42 },
+        generate: async () => ({ image }),
+        review: async () => ++reviewCalls === 1
+            ? { verdict: 'reject', issues: [{ code: 'ADDED_SEAL', evidence: '左上角新增红印' }], summary: '新增印章' }
+            : { verdict: 'pass', issues: [], summary: '主体保持' } });
+    assert.equal(result.chosen.seed, 42 + 7919);
+    assert.equal(result.report.semantic.verdict, 'pass');
+    let repairs = 0;
+    const uncertain = await runStructurePipeline({ sketch: image, options: { candidates: 1 }, generate: async () => ({ image }),
+        review: async () => ({ verdict: 'uncertain', issues: [], summary: '超时' }),
+        repair: async () => { repairs++; return { image }; } });
+    assert.equal(repairs, 0); assert.equal(uncertain.report.verdict, 'repair');
+});
+
+
+test('fidelity video preset selects the quality model and does not send flash-only audio flags', async t => {
+    const { createWanPayload } = await import('../providers/dashscope_wan_video.js');
+    const oldKey = process.env.DASHSCOPE_API_KEY, oldModel = process.env.DASHSCOPE_VIDEO_MODEL, oldQuality = process.env.DASHSCOPE_VIDEO_QUALITY_MODEL;
+    t.after(() => { for (const [k,v] of Object.entries({DASHSCOPE_API_KEY:oldKey,DASHSCOPE_VIDEO_MODEL:oldModel,DASHSCOPE_VIDEO_QUALITY_MODEL:oldQuality})) {if (v === undefined) delete process.env[k]; else process.env[k]=v;} });
+    process.env.DASHSCOPE_API_KEY = 'mock-key'; process.env.DASHSCOPE_VIDEO_MODEL = 'wan2.6-i2v-flash'; process.env.DASHSCOPE_VIDEO_QUALITY_MODEL = 'wan2.6-i2v';
+    const quality = createWanPayload({ image, options: { profile: 'premium', duration: 5, resolution: '1080P', audio: false } });
+    assert.equal(quality.model, 'wan2.6-i2v'); assert.equal(quality.parameters.resolution, '1080P'); assert.equal('audio' in quality.parameters, false);
+    const fast = createWanPayload({ image, options: { profile: 'balanced', audio: false } });
+    assert.equal(fast.model, 'wan2.6-i2v-flash'); assert.equal(fast.parameters.audio, false);
+});

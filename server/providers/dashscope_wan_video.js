@@ -11,7 +11,7 @@ export const DASH_SCOPE_RUNNING_STATUSES = new Set(["PENDING", "RUNNING", "UNKNO
 const DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/api/v1";
 const DEFAULT_MODEL = "wan2.6-i2v-flash";
 const DEFAULT_NEGATIVE =
-    "低清晰度，模糊，抖动，闪烁，主体变形，字形扭曲，笔画漂移，纹样变形，新增字幕，额外标志";
+    "低清晰度，模糊，抖动，闪烁，主体变形，字形扭曲，笔画漂移，纹样变形，新增字幕，新增题字，新增红印章，书法落款，云纹装饰，月球纹理，放射光环，复制物体，主体消失，画外新增景物，额外标志";
 const VIDEO_MODE_RANGES = {
     short: { min: 5, max: 5, fallback: 5 },
     long: { min: 6, max: 10, fallback: 8 }
@@ -223,7 +223,9 @@ export function validateWanVideoRequest({ image, options = {} } = {}) {
 }
 
 export function createWanPayload({ image, prompt = "", negative = "", options = {} }) {
-    const { model } = getDashScopeConfig();
+    const { model: configuredModel } = getDashScopeConfig();
+    const model = ['premium', 'cinematic'].includes(options.profile)
+        ? (process.env.DASHSCOPE_VIDEO_QUALITY_MODEL || 'wan2.6-i2v') : configuredModel;
     const videoMode = sanitizeWanVideoMode(options?.video_mode || options?.duration_mode, options?.duration);
     const duration = sanitizeWanDurationForMode(options?.duration, videoMode);
     const resolution = sanitizeWanResolution(options?.resolution, "720P");
@@ -247,7 +249,7 @@ export function createWanPayload({ image, prompt = "", negative = "", options = 
         parameters: {
             resolution,
             duration,
-            audio: Boolean(options?.audio ?? false),
+            ...(model === 'wan2.6-i2v-flash' ? { audio: Boolean(options?.audio ?? false) } : {}),
             watermark: Boolean(options?.watermark ?? false),
             shot_type: shotType,
             prompt_extend: options?.prompt_extend === true,
@@ -306,7 +308,7 @@ export async function createDashScopeWanTask({ image, prompt = "", negative = ""
         providerStatus: extractDashScopeTaskStatus(data),
         projectStatus: mapDashScopeStatus(extractDashScopeTaskStatus(data)),
         requestId,
-        model,
+        model: payload.model,
         promptUsed: payload.input.prompt,
         negativeUsed: payload.input.negative_prompt,
         parameters: payload.parameters,

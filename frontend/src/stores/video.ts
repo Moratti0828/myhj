@@ -17,8 +17,8 @@ const QUALITY_PRESETS = {
     resolution: '720P' as const,
   },
   premium: {
-    label: '高清成片',
-    hint: '1080P · 5 秒，适合细赏画面。',
+    label: '保真优先',
+    hint: '1080P · 5 秒，使用较高质量模型并带音轨，费用高于快速预览。',
     videoMode: 'short' as const,
     duration: 5,
     resolution: '1080P' as const,
@@ -154,11 +154,11 @@ export const useVideoStore = defineStore('video', {
     videoUrl: '',
     taskId: '',
     providerTaskId: '',
-    videoMode: QUALITY_PRESETS.balanced.videoMode,
-    duration: QUALITY_PRESETS.balanced.duration,
-    resolution: QUALITY_PRESETS.balanced.resolution,
+    videoMode: QUALITY_PRESETS.premium.videoMode,
+    duration: QUALITY_PRESETS.premium.duration,
+    resolution: QUALITY_PRESETS.premium.resolution,
     imageSize: 'original',
-    qualityPreset: 'balanced',
+    qualityPreset: 'premium',
     promptExtend: false,
     watermark: false,
     seed: '',
@@ -191,7 +191,7 @@ export const useVideoStore = defineStore('video', {
       this.progress = []
       this.videoUrl = ''
       this.taskId = ''
-      this.providerTaskId = '' 
+      this.providerTaskId = ''
       this.error = ''
     },
     applyQualityPreset(preset: QualityPreset) {
@@ -264,7 +264,7 @@ export const useVideoStore = defineStore('video', {
       if (last?.stage === message.stage && last?.status === message.status && last?.message === message.message) {
         this.progress[this.progress.length - 1] = message
       } else this.progress = [...this.progress.slice(-11), message]
-      this.pollWarning = '' 
+      this.pollWarning = ''
       if (task.videoUrl) this.videoUrl = task.videoUrl
 
       if (task.status === 'succeeded') {

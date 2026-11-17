@@ -61,7 +61,7 @@ export function createUsageGuard(dir) {
         const day = new Date().toISOString().slice(0, 10);
         const key = `${day}:${user}`;
         const item = usage[key] || { count: 0, last: 0 };
-        const cost = req.path.includes('structure') ? 4 : 1;
+        const cost = req.path.includes('structure') ? 8 : /generate|enhance|storyboards/.test(req.path) ? 2 : 1;
         const limit = Math.max(1, Number(process.env.AI_DAILY_LIMIT) || 30);
         if (active.has(user) || Date.now() - item.last < 2000 || item.count + cost > limit) {
             res.status(429).json({ success: false, error: '请求过于频繁、已有任务处理中或今日 AI 额度已用完，请稍后再试' }); return false;

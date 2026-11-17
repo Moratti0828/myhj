@@ -1,3 +1,4 @@
+import { reviewImagePair } from './providers/semanticReview.js';
 import "./env.js";
 import express from "express";
 import cors from "cors";
@@ -174,6 +175,7 @@ async function runGenerationPipeline({
         throw missingErr;
     }
 
+    sketch = await imageUrlToDataUrl(sketch);
     console.log(`[${mode}] start pipeline`);
     ensureSiliconFlowApiKey();
 
@@ -192,6 +194,17 @@ async function runGenerationPipeline({
         onProgress: emit
     });
 
+    // Never replace the user's current work with a semantically rejected edit.
+    emit("reviewing", { message: "正在对照原作检查主体、文字与印章…" });
+    if (!out.materialized) throw new Error('图片未能安全下载，原作已保留，请稍后重试。');
+    const semantic = await reviewImagePair({ source: sketch, candidate: out.imageDataUrl, mode: mode === 'generate' ? 'sketch' : 'edit' });
+    if (semantic.verdict !== 'pass') {
+        const error = new Error(semantic.verdict === 'reject'
+            ? `候选未通过保真复核，原作已保留：${semantic.issues.map(item => item.evidence).join('；')}`
+            : '保真复核未完成，原作已保留；请稍后重试。');
+        error.status = 422;
+        throw error;
+    }
     console.log(`[${mode}] done`);
     return {
         caption: null,
@@ -536,6 +549,7 @@ app.post("/api/generate/structure/stream", async (req, res) => {
             negative,
             options: options || {},
             onProgress: send,
+            review: pair => reviewImagePair({ ...pair, mode: 'sketch' }),
             generate: async ({ prompt: builtPrompt, negative: builtNegative, seed }) => {
                 const out = await generateWithSiliconFlow({
                     image: sketch,
@@ -544,14 +558,15 @@ app.post("/api/generate/structure/stream", async (req, res) => {
                 });
                 return materializeOutput(out);
             },
-            repair: async ({ image, instruction }) => {
-                const repairPrompt = [
-                    "只修改需要修正的部分，其余像素、构图与主体保持不变，不新增任何对象。",
-                    `修正要求：${instruction}`,
-                    "输出必须与原作同画幅、同构图。"
-                ].join("\n");
+            repair: async ({ instruction }) => {
+                // Restart from the original, so a missing subject or invented seal
+                // in a failed candidate cannot become the new visual reference.
+                const repairPrompt = buildImageEditPrompt({
+                    style, content, mode: "generate",
+                    prompt: `重新依原作润色，保持指定风格。上一候选存在以下问题，本次必须避免：${instruction}。${prompt || ""}`
+                }).positivePrompt;
                 const out = await generateWithSiliconFlow({
-                    image,
+                    image: sketch,
                     prompt: repairPrompt,
                     options: { negative_prompt: DEFAULT_NEGATIVE }
                 });

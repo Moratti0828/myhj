@@ -223,7 +223,7 @@
           <div class="structure-score-row">
             <span class="structure-score">{{ Math.round((creation.structureReport.score || 0) * 100) }}</span>
             <div class="structure-score-copy">
-              <strong>结构体检</strong>
+              <strong>几何结构分 · 非画质评分</strong>
               <span :class="['structure-verdict', creation.structureReport.verdict]">{{ verdictText }}</span>
             </div>
             <button
@@ -487,7 +487,9 @@ const verdictText = computed(() => {
   if (creation.structureMetrics?.glyphIoU && creation.structureMetrics.glyphIoU > 0.95 && creation.structureContract?.style === 'calligraphy') {
     return '字形保持通过'
   }
-  return report.verdict === 'accept' ? '结构通过' : '仍有结构缺陷，请检查'
+  if (report.semantic?.verdict === 'uncertain') return '主体复核未完成，请人工检查'
+  if (report.semantic?.verdict === 'reject') return '发现主体或文字变化，请勿直接采用'
+  return report.verdict === 'accept' ? (report.semantic ? '结构与主体复核通过，仍请看图确认' : '几何检查通过，未验证主体语义') : '仍有保真缺陷，请检查'
 })
 
 const metricRows = computed(() => {

@@ -76,6 +76,7 @@ export interface StructureDefect {
 }
 
 export interface StructureReport {
+  semantic?: { verdict: 'pass' | 'reject' | 'uncertain'; summary: string; issues: { code: string; evidence: string }[] }
   score: number
   verdict: 'accept' | 'repair'
   defects: StructureDefect[]

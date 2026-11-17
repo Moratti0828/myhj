@@ -28,7 +28,7 @@ try {
         prompt: "水墨山水云雾缓慢流动，镜头轻轻推进。",
         profile: "balanced"
     });
-    assert(prompt.includes("传统艺术短片"), "prompt should include visual style");
+    assert(prompt.includes("complete visual reference") && prompt.includes("count, position"), "prompt must preserve the existing image rather than ask for a new painting");
     assert(prompt.includes("水墨山水"), "prompt should preserve user intent");
     const longPrompt = buildWanPrompt({
         prompt: "山水长卷从晨雾到月色，镜头分四段展开。",
